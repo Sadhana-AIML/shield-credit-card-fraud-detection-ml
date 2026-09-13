@@ -1,0 +1,55 @@
+# Shield Credit Card Fraud Detection Using ML
+
+## About the Project
+
+Shield Credit Card Fraud Detection is a Machine Learning-based web application designed to detect potentially fraudulent credit card transactions.
+
+The system uses Machine Learning algorithms to analyze transaction details and predict whether a transaction is legitimate or fraudulent.
+
+## Technologies Used
+
+* Python
+* Flask
+* Flask-CORS
+* Scikit-learn
+* NumPy
+* Pandas
+* HTML
+* CSS
+* JavaScript
+
+## Features
+
+* Credit card transaction fraud detection
+* Machine Learning model prediction
+* User-friendly web interface
+* Backend API using Flask
+* Automatic model training
+
+## How to Run
+
+### Backend
+
+```bash
+cd backend
+python -m pip install -r requirements.txt
+python app.py
+```
+
+The backend will run at:
+
+http://127.0.0.1:5000
+
+### Frontend
+
+Open `frontend/index.html` in a browser or use VS Code Live Server.
+
+## Project Objective
+
+The main objective of this project is to identify fraudulent credit card transactions using Machine Learning techniques and improve digital payment security.
+
+## Developer
+
+Sadhana
+
+GitHub: Sadhana-AIML
