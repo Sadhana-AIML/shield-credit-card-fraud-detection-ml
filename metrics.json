@@ -1,0 +1,21 @@
+{
+  "accuracy": 100.0,
+  "precision": 100.0,
+  "recall": 100.0,
+  "f1": 100.0,
+  "roc_auc": 100.0,
+  "confusion_matrix": [
+    [
+      980,
+      0
+    ],
+    [
+      0,
+      20
+    ]
+  ],
+  "algorithm": "random_forest",
+  "total_samples": 5000,
+  "fraud_samples": 100,
+  "legit_samples": 4900
+}

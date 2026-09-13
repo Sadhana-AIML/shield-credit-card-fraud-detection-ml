@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FraudShield · ML Fraud Detection</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:       #05070f;
+  --surface:  #0d1120;
+  --card:     #111827;
+  --border:   #1e2d40;
+  --accent:   #00d9ff;
+  --danger:   #ff3b5c;
+  --safe:     #00f5a0;
+  --warn:     #ffb800;
+  --muted:    #4a5568;
+  --text:     #e2e8f0;
+  --text2:    #8899aa;
+  --glow:     0 0 24px rgba(0,217,255,.18);
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+
+/* ── SCANLINE OVERLAY ── */
+body::before{
+  content:'';position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,217,255,.015) 2px,rgba(0,217,255,.015) 4px);
+  pointer-events:none;z-index:999;
+}
+
+/* ── HEADER ── */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:1.2rem 2.5rem;
+  background:rgba(13,17,32,.85);
+  border-bottom:1px solid var(--border);
+  backdrop-filter:blur(12px);
+  position:sticky;top:0;z-index:100;
+}
+.logo{display:flex;align-items:center;gap:.75rem;}
+.logo-icon{
+  width:38px;height:38px;background:var(--accent);border-radius:8px;
+  display:grid;place-items:center;font-size:1.2rem;
+  box-shadow:var(--glow);
+}
+.logo-text{font-size:1.25rem;font-weight:800;letter-spacing:-.02em;}
+.logo-text span{color:var(--accent);}
+.status-dot{
+  display:flex;align-items:center;gap:.5rem;
+  font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--text2);
+}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--safe);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* ── NAV TABS ── */
+nav{display:flex;gap:.25rem;padding:1.25rem 2.5rem 0;border-bottom:1px solid var(--border);}
+.tab{
+  padding:.6rem 1.4rem;border-radius:8px 8px 0 0;
+  font-weight:600;font-size:.85rem;letter-spacing:.03em;cursor:pointer;
+  border:1px solid transparent;border-bottom:none;
+  transition:all .2s;color:var(--text2);background:transparent;
+  position:relative;bottom:-1px;
+}
+.tab.active{
+  color:var(--accent);background:var(--card);
+  border-color:var(--border);border-bottom-color:var(--card);
+}
+.tab:hover:not(.active){color:var(--text);background:rgba(255,255,255,.04);}
+
+/* ── MAIN LAYOUT ── */
+main{max-width:1200px;margin:0 auto;padding:2rem 2.5rem 4rem;}
+.page{display:none;animation:fadeIn .3s ease;}
+.page.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+
+/* ── SECTION TITLES ── */
+.section-title{
+  font-size:1.5rem;font-weight:800;letter-spacing:-.03em;
+  margin-bottom:1.5rem;
+  display:flex;align-items:center;gap:.75rem;
+}
+.section-title::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+.badge{
+  font-family:'JetBrains Mono',monospace;font-size:.65rem;
+  padding:.2rem .55rem;border-radius:4px;font-weight:500;letter-spacing:.05em;
+}
+.badge-accent{background:rgba(0,217,255,.12);color:var(--accent);border:1px solid rgba(0,217,255,.25);}
+.badge-danger{background:rgba(255,59,92,.12);color:var(--danger);border:1px solid rgba(255,59,92,.25);}
+.badge-safe{background:rgba(0,245,160,.12);color:var(--safe);border:1px solid rgba(0,245,160,.25);}
+.badge-warn{background:rgba(255,184,0,.12);color:var(--warn);border:1px solid rgba(255,184,0,.25);}
+
+/* ── CARDS ── */
+.card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:1.5rem;
+}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;}
+
+/* ── METRIC CARDS ── */
+.metric-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:1.25rem 1.5rem;
+  position:relative;overflow:hidden;
+}
+.metric-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:var(--accent);opacity:.5;
+}
+.metric-label{font-size:.72rem;color:var(--text2);font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:.5rem;}
+.metric-value{font-size:2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--accent);}
+.metric-sub{font-size:.75rem;color:var(--text2);margin-top:.25rem;font-family:'JetBrains Mono',monospace;}
+
+/* ── FORM ELEMENTS ── */
+.form-group{margin-bottom:1.1rem;}
+label{display:block;font-size:.8rem;color:var(--text2);margin-bottom:.45rem;font-weight:600;letter-spacing:.04em;}
+input[type=number],input[type=text],select{
+  width:100%;padding:.65rem 1rem;
+  background:rgba(255,255,255,.04);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);
+  font-family:'JetBrains Mono',monospace;font-size:.85rem;
+  transition:border-color .2s,box-shadow .2s;outline:none;
+}
+input[type=number]:focus,select:focus{
+  border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,217,255,.1);
+}
+input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;}
+
+/* ── BUTTONS ── */
+.btn{
+  display:inline-flex;align-items:center;gap:.5rem;
+  padding:.7rem 1.6rem;border-radius:8px;border:none;cursor:pointer;
+  font-family:'Syne',sans-serif;font-weight:700;font-size:.875rem;
+  letter-spacing:.02em;transition:all .2s;
+}
+.btn-primary{
+  background:var(--accent);color:#05070f;
+  box-shadow:0 0 20px rgba(0,217,255,.3);
+}
+.btn-primary:hover{box-shadow:0 0 32px rgba(0,217,255,.5);transform:translateY(-1px);}
+.btn-outline{
+  background:transparent;color:var(--accent);
+  border:1px solid var(--accent);
+}
+.btn-outline:hover{background:rgba(0,217,255,.08);}
+.btn-danger{background:var(--danger);color:#fff;box-shadow:0 0 20px rgba(255,59,92,.3);}
+.btn-danger:hover{box-shadow:0 0 32px rgba(255,59,92,.5);transform:translateY(-1px);}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important;}
+
+/* ── TRAIN PANEL ── */
+.algo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1.5rem;}
+.algo-card{
+  border:2px solid var(--border);border-radius:10px;padding:1rem;cursor:pointer;
+  transition:all .2s;text-align:center;
+}
+.algo-card:hover{border-color:rgba(0,217,255,.4);background:rgba(0,217,255,.04);}
+.algo-card.selected{border-color:var(--accent);background:rgba(0,217,255,.08);}
+.algo-card .algo-icon{font-size:1.8rem;margin-bottom:.4rem;}
+.algo-card .algo-name{font-weight:700;font-size:.85rem;}
+.algo-card .algo-desc{font-size:.72rem;color:var(--text2);margin-top:.2rem;}
+
+/* ── PROGRESS BAR ── */
+.progress-wrap{background:rgba(255,255,255,.06);border-radius:4px;height:8px;overflow:hidden;margin:.4rem 0;}
+.progress-bar{height:100%;border-radius:4px;transition:width .8s ease;background:var(--accent);}
+.progress-bar.danger{background:var(--danger);}
+.progress-bar.safe{background:var(--safe);}
+
+/* ── RESULT BOX ── */
+.result-box{
+  border-radius:12px;padding:1.5rem;margin-top:1.5rem;
+  border:2px solid transparent;text-align:center;
+  display:none;
+}
+.result-box.fraud{border-color:var(--danger);background:rgba(255,59,92,.06);}
+.result-box.legit{border-color:var(--safe);background:rgba(0,245,160,.06);}
+.result-box.warn{border-color:var(--warn);background:rgba(255,184,0,.06);}
+.result-verdict{font-size:2rem;font-weight:800;margin-bottom:.5rem;}
+.result-prob{font-size:3rem;font-weight:800;font-family:'JetBrains Mono',monospace;margin:.5rem 0;}
+
+/* ── CONFUSION MATRIX ── */
+.cm-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;max-width:260px;}
+.cm-cell{
+  border-radius:6px;padding:1rem;text-align:center;
+  font-family:'JetBrains Mono',monospace;
+}
+.cm-cell .val{font-size:1.6rem;font-weight:700;}
+.cm-cell .lbl{font-size:.65rem;color:var(--text2);margin-top:.2rem;}
+.cm-tp{background:rgba(0,245,160,.15);border:1px solid rgba(0,245,160,.3);}
+.cm-fp{background:rgba(255,184,0,.1);border:1px solid rgba(255,184,0,.25);}
+.cm-fn{background:rgba(255,59,92,.1);border:1px solid rgba(255,59,92,.25);}
+.cm-tn{background:rgba(0,217,255,.1);border:1px solid rgba(0,217,255,.2);}
+
+/* ── TABLE ── */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+th{
+  text-align:left;font-size:.72rem;letter-spacing:.08em;
+  color:var(--text2);font-weight:600;text-transform:uppercase;
+  padding:.7rem 1rem;border-bottom:1px solid var(--border);
+}
+td{padding:.75rem 1rem;font-size:.85rem;border-bottom:1px solid rgba(255,255,255,.04);}
+tr:hover td{background:rgba(255,255,255,.02);}
+.tag{
+  font-family:'JetBrains Mono',monospace;font-size:.72rem;
+  padding:.2rem .55rem;border-radius:4px;font-weight:600;
+}
+.tag-fraud{background:rgba(255,59,92,.15);color:var(--danger);}
+.tag-legit{background:rgba(0,245,160,.12);color:var(--safe);}
+
+/* ── TOAST ── */
+#toast{
+  position:fixed;bottom:2rem;right:2rem;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:.9rem 1.4rem;
+  font-size:.85rem;z-index:9999;
+  transform:translateY(80px);opacity:0;
+  transition:all .3s ease;pointer-events:none;
+  display:flex;align-items:center;gap:.6rem;
+}
+#toast.show{transform:none;opacity:1;}
+
+/* ── LOADER ── */
+.spinner{
+  width:20px;height:20px;border:2px solid rgba(0,217,255,.2);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── ABOUT PAGE ── */
+.feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;}
+.feature-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:1.4rem;
+}
+.feature-icon{font-size:2rem;margin-bottom:.75rem;}
+.feature-title{font-weight:700;margin-bottom:.4rem;}
+.feature-desc{font-size:.82rem;color:var(--text2);line-height:1.6;}
+
+.tech-list{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem;}
+.tech-pill{
+  font-family:'JetBrains Mono',monospace;font-size:.72rem;
+  padding:.25rem .7rem;border-radius:20px;
+  background:rgba(0,217,255,.08);color:var(--accent);
+  border:1px solid rgba(0,217,255,.2);
+}
+
+@media(max-width:768px){
+  header{padding:1rem 1.25rem;}
+  nav,main{padding-left:1.25rem;padding-right:1.25rem;}
+  .grid-2,.grid-3,.grid-4,.algo-grid,.feature-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🛡️</div>
+    <div class="logo-text">Fraud<span>Shield</span></div>
+  </div>
+  <div class="status-dot">
+    <div class="dot"></div>
+    <span id="api-status">API CONNECTING…</span>
+  </div>
+</header>
+
+<nav>
+  <div class="tab active" onclick="showPage('train')">⚙️ Train Model</div>
+  <div class="tab" onclick="showPage('predict')">🔍 Predict</div>
+  <div class="tab" onclick="showPage('batch')">📋 Batch Test</div>
+  <div class="tab" onclick="showPage('metrics')">📊 Metrics</div>
+  <div class="tab" onclick="showPage('history')">🕐 History</div>
+  <div class="tab" onclick="showPage('storage')">💾 Storage</div>
+  <div class="tab" onclick="showPage('about')">📖 About</div>
+</nav>
+
+<main>
+
+<!-- ══ TRAIN PAGE ══════════════════════════════════════════════════════════ -->
+<div class="page active" id="page-train">
+  <div class="section-title">Train Model <span class="badge badge-accent">STEP 1</span></div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3 style="margin-bottom:1rem;font-size:1rem;">Select Algorithm</h3>
+      <div class="algo-grid">
+        <div class="algo-card selected" onclick="selectAlgo(this,'random_forest')">
+          <div class="algo-icon">🌲</div>
+          <div class="algo-name">Random Forest</div>
+          <div class="algo-desc">Ensemble of decision trees</div>
+        </div>
+        <div class="algo-card" onclick="selectAlgo(this,'logistic')">
+          <div class="algo-icon">📈</div>
+          <div class="algo-name">Logistic Regression</div>
+          <div class="algo-desc">Linear probabilistic model</div>
+        </div>
+        <div class="algo-card" onclick="selectAlgo(this,'decision_tree')">
+          <div class="algo-icon">🌿</div>
+          <div class="algo-name">Decision Tree</div>
+          <div class="algo-desc">Rule-based classification</div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="train-btn" onclick="trainModel()" style="width:100%">
+        <span>⚡ Train Model</span>
+      </button>
+      <div id="train-log" style="margin-top:1rem;font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--text2);line-height:1.8;display:none;"></div>
+    </div>
+
+    <div class="card" id="train-results" style="display:none;">
+      <h3 style="margin-bottom:1.25rem;font-size:1rem;">Training Results</h3>
+      <div id="result-metrics"></div>
+    </div>
+  </div>
+
+  <div style="margin-top:1.5rem;" class="card">
+    <h3 style="margin-bottom:1rem;font-size:1rem;">Dataset Overview</h3>
+    <div class="grid-4">
+      <div><div class="metric-label">Total Samples</div><div class="metric-value" style="font-size:1.4rem;" id="ds-total">5,000</div></div>
+      <div><div class="metric-label">Legit Txns</div><div class="metric-value" style="font-size:1.4rem;color:var(--safe);" id="ds-legit">4,900</div></div>
+      <div><div class="metric-label">Fraud Txns</div><div class="metric-value" style="font-size:1.4rem;color:var(--danger);" id="ds-fraud">100</div></div>
+      <div><div class="metric-label">Fraud Rate</div><div class="metric-value" style="font-size:1.4rem;color:var(--warn);">2%</div></div>
+    </div>
+    <div style="margin-top:1rem;">
+      <div style="font-size:.75rem;color:var(--text2);margin-bottom:.3rem;">Class Distribution</div>
+      <div class="progress-wrap">
+        <div class="progress-bar safe" style="width:98%"></div>
+      </div>
+      <div style="font-size:.72rem;color:var(--text2);margin-top:.3rem;font-family:'JetBrains Mono',monospace;">▓ Legitimate (98%)  &nbsp; ░ Fraud (2%)</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PREDICT PAGE ════════════════════════════════════════════════════════ -->
+<div class="page" id="page-predict">
+  <div class="section-title">Single Transaction Predict <span class="badge badge-accent">LIVE</span></div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3 style="margin-bottom:1.25rem;font-size:1rem;">Transaction Details</h3>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label>💰 Amount ($)</label>
+          <input type="number" id="p-amount" value="150" min="0" step="0.01"/>
+        </div>
+        <div class="form-group">
+          <label>🕐 Hour of Day (0–23)</label>
+          <input type="number" id="p-hour" value="14" min="0" max="23"/>
+        </div>
+        <div class="form-group">
+          <label>📍 Distance from Home (km)</label>
+          <input type="number" id="p-distance" value="10" min="0"/>
+        </div>
+        <div class="form-group">
+          <label>🔢 Txn Count (last 24h)</label>
+          <input type="number" id="p-txncount" value="3" min="1"/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>⚠️ Merchant Risk Score: <span id="mr-val">0.10</span></label>
+        <input type="range" id="p-merchant" min="0" max="1" step="0.01" value="0.10"
+               oninput="document.getElementById('mr-val').textContent=parseFloat(this.value).toFixed(2)"/>
+      </div>
+      <div class="form-group">
+        <label>⚡ Velocity Score: <span id="vs-val">0.10</span></label>
+        <input type="range" id="p-velocity" min="0" max="1" step="0.01" value="0.10"
+               oninput="document.getElementById('vs-val').textContent=parseFloat(this.value).toFixed(2)"/>
+      </div>
+
+      <div style="display:flex;gap:.75rem;margin-top:.5rem;">
+        <button class="btn btn-primary" onclick="predict()" style="flex:1">🔍 Analyze</button>
+        <button class="btn btn-outline" onclick="fillRandom()">🎲 Random</button>
+        <button class="btn btn-outline" onclick="fillFraud()">⚠️ Fraud Sample</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="result-box" id="result-box">
+        <div id="result-icon" style="font-size:3rem;margin-bottom:.5rem;"></div>
+        <div class="result-verdict" id="result-verdict"></div>
+        <div class="result-prob" id="result-prob"></div>
+        <div id="result-detail" style="font-size:.85rem;color:var(--text2);margin-top:.5rem;"></div>
+        <div style="margin-top:1rem;">
+          <div style="font-size:.72rem;color:var(--text2);margin-bottom:.4rem;font-weight:600;letter-spacing:.06em;">FRAUD PROBABILITY</div>
+          <div class="progress-wrap" style="height:12px;">
+            <div class="progress-bar" id="result-bar" style="width:0%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:1rem;" id="explain-box" style="display:none;">
+        <h3 style="margin-bottom:1rem;font-size:.9rem;color:var(--text2);">Risk Factors</h3>
+        <div id="risk-factors"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Presets -->
+  <div style="margin-top:1.5rem;" class="card">
+    <h3 style="margin-bottom:1rem;font-size:.9rem;color:var(--text2);">Quick Test Scenarios</h3>
+    <div class="grid-3">
+      <button class="btn btn-outline" onclick="fillPreset('coffee')" style="justify-content:center">☕ Morning Coffee</button>
+      <button class="btn btn-outline" onclick="fillPreset('online')" style="justify-content:center">🛍️ Online Shopping</button>
+      <button class="btn btn-outline" onclick="fillPreset('suspicious')" style="justify-content:center">🚨 Suspicious Transaction</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ BATCH PAGE ══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-batch">
+  <div class="section-title">Batch Analysis <span class="badge badge-accent">MULTI-TXN</span></div>
+
+  <div class="card" style="margin-bottom:1.25rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+      <h3 style="font-size:1rem;">Upload Transactions (JSON)</h3>
+      <div style="display:flex;gap:.75rem;">
+        <button class="btn btn-outline" onclick="loadSample()">📥 Load Sample Data</button>
+        <button class="btn btn-primary" onclick="runBatch()">▶ Run Batch</button>
+      </div>
+    </div>
+    <textarea id="batch-input" rows="8"
+      style="width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:1rem;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:.78rem;resize:vertical;outline:none;"
+      placeholder='[{"amount":50,"hour":14,"distance":5,"transaction_count":2,"merchant_risk":0.1,"velocity_score":0.1}]'></textarea>
+  </div>
+
+  <div class="card" id="batch-results" style="display:none;">
+    <div style="display:flex;gap:1rem;margin-bottom:1.25rem;" id="batch-summary"></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Amount ($)</th><th>Prediction</th>
+            <th>Risk Score</th><th>Risk Bar</th>
+          </tr>
+        </thead>
+        <tbody id="batch-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ METRICS PAGE ════════════════════════════════════════════════════════ -->
+<div class="page" id="page-metrics">
+  <div class="section-title">Model Performance <span class="badge badge-accent">ANALYTICS</span></div>
+
+  <div class="grid-4" style="margin-bottom:1.25rem;" id="kpi-cards">
+    <div class="metric-card"><div class="metric-label">Accuracy</div><div class="metric-value" id="m-acc">—</div><div class="metric-sub">Overall correctness</div></div>
+    <div class="metric-card"><div class="metric-label">Precision</div><div class="metric-value" id="m-prec">—</div><div class="metric-sub">Fraud alerts correct</div></div>
+    <div class="metric-card"><div class="metric-label">Recall</div><div class="metric-value" id="m-rec">—</div><div class="metric-sub">Fraud cases caught</div></div>
+    <div class="metric-card"><div class="metric-label">F1 Score</div><div class="metric-value" id="m-f1">—</div><div class="metric-sub">Harmonic mean</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3 style="margin-bottom:1.25rem;font-size:1rem;">ROC AUC Score</h3>
+      <div style="text-align:center;padding:1rem 0;">
+        <div style="font-size:4rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--accent);" id="m-auc">—</div>
+        <div style="color:var(--text2);font-size:.82rem;margin-top:.5rem;">Area Under ROC Curve</div>
+      </div>
+      <div id="auc-bar-wrap">
+        <div style="font-size:.72rem;color:var(--text2);margin-bottom:.4rem;">AUC Score</div>
+        <div class="progress-wrap" style="height:12px;">
+          <div class="progress-bar" id="auc-bar" style="width:0%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:.3rem;">
+          <span>0%</span><span>Random (50%)</span><span>Perfect (100%)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:1.25rem;font-size:1rem;">Confusion Matrix</h3>
+      <div style="display:flex;align-items:center;gap:2rem;">
+        <div>
+          <div style="font-size:.72rem;color:var(--text2);margin-bottom:.75rem;font-weight:600;letter-spacing:.06em;">PREDICTED →</div>
+          <div class="cm-grid" id="cm-grid">
+            <div class="cm-cell cm-tp"><div class="val" id="cm-tp">—</div><div class="lbl">TP</div></div>
+            <div class="cm-cell cm-fp"><div class="val" id="cm-fp">—</div><div class="lbl">FP</div></div>
+            <div class="cm-cell cm-fn"><div class="val" id="cm-fn">—</div><div class="lbl">FN</div></div>
+            <div class="cm-cell cm-tn"><div class="val" id="cm-tn">—</div><div class="lbl">TN</div></div>
+          </div>
+        </div>
+        <div style="font-size:.78rem;color:var(--text2);line-height:2;">
+          <div>✅ <b style="color:var(--safe)">TP</b> — Fraud caught</div>
+          <div>⚠️ <b style="color:var(--warn)">FP</b> — False alarm</div>
+          <div>❌ <b style="color:var(--danger)">FN</b> — Missed fraud</div>
+          <div>✅ <b style="color:var(--accent)">TN</b> — Legit cleared</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:1.25rem;">
+    <h3 style="margin-bottom:1.25rem;font-size:1rem;">Metric Comparison</h3>
+    <div id="metric-bars"></div>
+  </div>
+
+  <div style="text-align:center;margin-top:1.5rem;">
+    <button class="btn btn-outline" onclick="loadMetrics()">🔄 Refresh Metrics</button>
+  </div>
+</div>
+
+<!-- ══ ABOUT PAGE ══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-about">
+  <div class="section-title">About This Project</div>
+
+  <div class="card" style="margin-bottom:1.25rem;">
+    <div style="display:flex;gap:1.5rem;align-items:flex-start;">
+      <div style="font-size:3rem;">🎓</div>
+      <div>
+        <h2 style="font-size:1.3rem;margin-bottom:.5rem;">Credit Card Fraud Detection Using ML</h2>
+        <p style="color:var(--text2);line-height:1.7;font-size:.9rem;">
+          A college-level machine learning project that demonstrates how financial institutions
+          detect fraudulent transactions in real time. This system trains classification models
+          on synthetic transaction data and exposes a REST API for live predictions.
+        </p>
+        <div class="tech-list">
+          <span class="tech-pill">Python 3.x</span>
+          <span class="tech-pill">Flask</span>
+          <span class="tech-pill">scikit-learn</span>
+          <span class="tech-pill">NumPy</span>
+          <span class="tech-pill">Pandas</span>
+          <span class="tech-pill">HTML5/CSS3</span>
+          <span class="tech-pill">Vanilla JS</span>
+          <span class="tech-pill">REST API</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature-grid" style="margin-bottom:1.25rem;">
+    <div class="feature-card">
+      <div class="feature-icon">🌲</div>
+      <div class="feature-title">Random Forest</div>
+      <div class="feature-desc">An ensemble of 100 decision trees trained using bagging. Best accuracy for imbalanced datasets like fraud detection.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📈</div>
+      <div class="feature-title">Logistic Regression</div>
+      <div class="feature-desc">A linear model that outputs probabilities using a sigmoid function. Fast, interpretable baseline for binary classification.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🌿</div>
+      <div class="feature-title">Decision Tree</div>
+      <div class="feature-desc">A rule-based model that splits data based on feature thresholds. Highly interpretable and visual.</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:1.25rem;">
+    <h3 style="margin-bottom:1rem;font-size:1rem;">📐 Features Used</h3>
+    <div class="grid-2">
+      <div>
+        <table style="font-size:.83rem;">
+          <tr><th>Feature</th><th>Description</th></tr>
+          <tr><td><code style="color:var(--accent)">amount</code></td><td>Transaction amount in USD</td></tr>
+          <tr><td><code style="color:var(--accent)">hour</code></td><td>Hour of the day (0–23)</td></tr>
+          <tr><td><code style="color:var(--accent)">distance</code></td><td>Distance from cardholder's home (km)</td></tr>
+          <tr><td><code style="color:var(--accent)">transaction_count</code></td><td>Number of transactions in last 24h</td></tr>
+          <tr><td><code style="color:var(--accent)">merchant_risk</code></td><td>Risk score of the merchant (0–1)</td></tr>
+          <tr><td><code style="color:var(--accent)">velocity_score</code></td><td>Speed of spending pattern (0–1)</td></tr>
+        </table>
+      </div>
+      <div>
+        <h4 style="margin-bottom:.75rem;font-size:.85rem;color:var(--text2);">API Endpoints</h4>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:2.2;">
+          <div><span style="color:var(--accent)">POST</span> <span style="color:var(--text2)">/api/train</span> — Train model</div>
+          <div><span style="color:var(--warn)">GET</span>  <span style="color:var(--text2)">/api/metrics</span> — Get metrics</div>
+          <div><span style="color:var(--accent)">POST</span> <span style="color:var(--text2)">/api/predict</span> — Single prediction</div>
+          <div><span style="color:var(--accent)">POST</span> <span style="color:var(--text2)">/api/batch</span> — Batch predictions</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-bottom:1rem;font-size:1rem;">🚀 How to Run</h3>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:.8rem;background:rgba(0,0,0,.4);border-radius:8px;padding:1.25rem;line-height:2.2;">
+      <div style="color:var(--text2)"># 1. Install dependencies</div>
+      <div style="color:var(--safe)">pip install -r backend/requirements.txt</div>
+      <div style="color:var(--text2);margin-top:.5rem"># 2. Run the backend</div>
+      <div style="color:var(--safe)">cd backend && python app.py</div>
+      <div style="color:var(--text2);margin-top:.5rem"># 3. Open frontend</div>
+      <div style="color:var(--safe)">Open frontend/index.html in your browser</div>
+      <div style="color:var(--text2);margin-top:.5rem"># 4. Visit API</div>
+      <div style="color:var(--safe)">http://localhost:5000</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══ HISTORY PAGE ════════════════════════════════════════════════════════ -->
+<div class="page" id="page-history">
+  <div class="section-title">Prediction History <span class="badge badge-accent">LOCAL DB</span></div>
+  <div class="card" style="margin-bottom:1.25rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+      <div style="font-size:.85rem;color:var(--text2);">All predictions are stored locally in <code style="color:var(--accent)">backend/storage/fraud.db</code></div>
+      <div style="display:flex;gap:.75rem;">
+        <button class="btn btn-outline" onclick="loadHistory()">🔄 Refresh</button>
+        <button class="btn btn-danger" onclick="clearHistory()">🗑️ Clear History</button>
+      </div>
+    </div>
+    <div id="history-summary" style="display:flex;gap:1rem;margin-bottom:1.25rem;"></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Time</th><th>Amount</th><th>Hour</th><th>Prediction</th><th>Fraud %</th><th>Risk</th></tr>
+        </thead>
+        <tbody id="history-body">
+          <tr><td colspan="7" style="text-align:center;color:var(--text2);padding:2rem;">Click Refresh to load history</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ STORAGE PAGE ════════════════════════════════════════════════════════ -->
+<div class="page" id="page-storage">
+  <div class="section-title">Local Storage <span class="badge badge-accent">FILES</span></div>
+  <div class="card" style="margin-bottom:1.25rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
+      <div>
+        <div style="font-weight:700;margin-bottom:.3rem;">Storage Location</div>
+        <code id="storage-dir" style="font-size:.8rem;color:var(--accent);font-family:'JetBrains Mono',monospace;">backend/storage/</code>
+      </div>
+      <button class="btn btn-outline" onclick="loadStorage()">🔄 Refresh</button>
+    </div>
+    <div id="storage-files" class="grid-3"></div>
+  </div>
+
+  <div class="card" style="margin-bottom:1.25rem;">
+    <h3 style="margin-bottom:1rem;font-size:1rem;">Training Run History <span style="color:var(--text2);font-weight:400;font-size:.82rem;">(saved in local DB)</span></h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Timestamp</th><th>Algorithm</th><th>Accuracy</th><th>Precision</th><th>Recall</th><th>F1</th><th>AUC</th></tr>
+        </thead>
+        <tbody id="runs-body">
+          <tr><td colspan="8" style="text-align:center;color:var(--text2);padding:2rem;">Click Refresh to load</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-bottom:1rem;font-size:1rem;">📂 What Gets Stored Locally</h3>
+    <div class="grid-2" style="gap:1rem;">
+      <div style="font-size:.83rem;line-height:2.2;">
+        <div>🧠 <code style="color:var(--accent)">fraud_model.pkl</code> — Trained ML model</div>
+        <div>📐 <code style="color:var(--accent)">scaler.pkl</code> — Feature scaler (StandardScaler)</div>
+        <div>📊 <code style="color:var(--accent)">metrics.json</code> — Last training metrics</div>
+        <div>🗄️ <code style="color:var(--accent)">fraud.db</code> — SQLite DB (predictions + runs)</div>
+        <div>📄 <code style="color:var(--accent)">dataset.csv</code> — Synthetic training data snapshot</div>
+      </div>
+      <div style="background:rgba(0,0,0,.35);border-radius:8px;padding:1rem;font-family:'JetBrains Mono',monospace;font-size:.75rem;line-height:2;">
+        <div style="color:var(--text2)"># View DB in VS Code</div>
+        <div style="color:var(--safe)">Install: SQLite Viewer extension</div>
+        <div style="color:var(--text2);margin-top:.5rem"># Or open in terminal</div>
+        <div style="color:var(--safe)">sqlite3 backend/storage/fraud.db</div>
+        <div style="color:var(--safe)">.tables</div>
+        <div style="color:var(--safe)">SELECT * FROM predictions;</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<div id="toast">📢 <span id="toast-msg"></span></div>
+
+<script>
+const API = 'http://localhost:5000';
+let selectedAlgo = 'random_forest';
+
+// ── Tab navigation ──────────────────────────────────────────────────────────
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  event.target.classList.add('active');
+  if(id==='metrics') loadMetrics();
+  if(id==='history') loadHistory();
+  if(id==='storage') loadStorage();
+}
+
+// ── Toast ───────────────────────────────────────────────────────────────────
+function toast(msg,dur=3000){
+  const t=document.getElementById('toast');
+  document.getElementById('toast-msg').textContent=msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),dur);
+}
+
+// ── API status check ────────────────────────────────────────────────────────
+async function checkApi(){
+  try{
+    const r=await fetch(`${API}/api/status`);
+    if(r.ok){
+      const d=await r.json();
+      document.getElementById('api-status').textContent = d.model_trained ? 'API ONLINE ✓' : 'API ONLINE — Train First';
+    } else {
+      document.getElementById('api-status').textContent='API ERROR';
+    }
+  }catch{document.getElementById('api-status').textContent='API OFFLINE';}
+}
+
+// ── Algorithm selection ─────────────────────────────────────────────────────
+function selectAlgo(el, algo){
+  document.querySelectorAll('.algo-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedAlgo = algo;
+}
+
+// ── Train ───────────────────────────────────────────────────────────────────
+async function trainModel(){
+  const btn=document.getElementById('train-btn');
+  const log=document.getElementById('train-log');
+  btn.disabled=true;
+  btn.innerHTML='<div class="spinner"></div> Training…';
+  log.style.display='block';
+  log.innerHTML='';
+
+  const steps=[
+    '> Generating synthetic dataset…',
+    '> Splitting train/test (80/20)…',
+    '> Scaling features with StandardScaler…',
+    `> Training ${selectedAlgo.replace('_',' ')}…`,
+    '> Evaluating on test set…',
+    '> Saving model to disk…'
+  ];
+  for(let i=0;i<steps.length;i++){
+    await new Promise(r=>setTimeout(r,350));
+    log.innerHTML += steps[i]+'<br/>';
+  }
+
+  try{
+    const res=await fetch(`${API}/api/train`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({algorithm:selectedAlgo})
+    });
+    const d=await res.json();
+    log.innerHTML += '> ✅ Training complete!<br/>';
+    showTrainResults(d.metrics);
+    toast('✅ Model trained successfully!');
+    checkApi();
+  }catch(e){
+    log.innerHTML += '> ❌ Error: '+e.message;
+    toast('❌ Backend not running. Start app.py first.');
+  }
+  btn.disabled=false;
+  btn.innerHTML='<span>⚡ Train Model</span>';
+}
+
+function showTrainResults(m){
+  const box=document.getElementById('train-results');
+  box.style.display='block';
+  document.getElementById('ds-total').textContent=m.total_samples?.toLocaleString()||'5,000';
+  document.getElementById('ds-legit').textContent=m.legit_samples?.toLocaleString()||'4,900';
+  document.getElementById('ds-fraud').textContent=m.fraud_samples?.toLocaleString()||'100';
+
+  const metrics=[
+    {label:'Accuracy',  val:m.accuracy,  color:'var(--accent)'},
+    {label:'Precision', val:m.precision, color:'var(--safe)'},
+    {label:'Recall',    val:m.recall,    color:'var(--warn)'},
+    {label:'F1 Score',  val:m.f1,        color:'#a78bfa'},
+    {label:'ROC AUC',   val:m.roc_auc,   color:'var(--accent)'},
+  ];
+  document.getElementById('result-metrics').innerHTML = metrics.map(({label,val,color})=>`
+    <div style="margin-bottom:.9rem;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:.3rem;">
+        <span style="font-size:.78rem;color:var(--text2);font-weight:600;">${label}</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:.85rem;color:${color};font-weight:700;">${val}%</span>
+      </div>
+      <div class="progress-wrap"><div class="progress-bar" style="width:${val}%;background:${color};"></div></div>
+    </div>`).join('');
+}
+
+// ── Predict ─────────────────────────────────────────────────────────────────
+async function predict(){
+  const body={
+    amount:         document.getElementById('p-amount').value,
+    hour:           document.getElementById('p-hour').value,
+    distance:       document.getElementById('p-distance').value,
+    transaction_count: document.getElementById('p-txncount').value,
+    merchant_risk:  document.getElementById('p-merchant').value,
+    velocity_score: document.getElementById('p-velocity').value,
+  };
+  try{
+    const res=await fetch(`${API}/api/predict`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+    const d=await res.json();
+    if(d.error){toast('⚠️ '+d.error);return;}
+    showPredResult(d);
+  }catch{toast('❌ Backend not running. Start app.py first.');}
+}
+
+function showPredResult(d){
+  const box=document.getElementById('result-box');
+  const bar=document.getElementById('result-bar');
+  box.style.display='block';
+  box.className='result-box '+(d.is_fraud?'fraud':d.fraud_prob>=40?'warn':'legit');
+
+  document.getElementById('result-icon').textContent   = d.is_fraud?'🚨':d.fraud_prob>=40?'⚠️':'✅';
+  document.getElementById('result-verdict').textContent = d.prediction;
+  document.getElementById('result-verdict').style.color = d.is_fraud?'var(--danger)':d.fraud_prob>=40?'var(--warn)':'var(--safe)';
+  document.getElementById('result-prob').textContent    = d.fraud_prob+'%';
+  document.getElementById('result-prob').style.color   = d.is_fraud?'var(--danger)':d.fraud_prob>=40?'var(--warn)':'var(--safe)';
+  document.getElementById('result-detail').textContent  = `Risk Level: ${d.risk_level} | Legitimate: ${d.legit_prob}%`;
+
+  bar.style.width='0%';
+  bar.className='progress-bar '+(d.is_fraud?'danger':d.fraud_prob>=40?'':'safe');
+  setTimeout(()=>bar.style.width=d.fraud_prob+'%', 100);
+
+  // Risk factors
+  const factors=[];
+  const amt=parseFloat(document.getElementById('p-amount').value);
+  const hr=parseInt(document.getElementById('p-hour').value);
+  const dist=parseFloat(document.getElementById('p-distance').value);
+  const tc=parseInt(document.getElementById('p-txncount').value);
+  const mr=parseFloat(document.getElementById('p-merchant').value);
+  const vs=parseFloat(document.getElementById('p-velocity').value);
+  if(amt>300)  factors.push({icon:'💰',text:`High amount ($${amt})`,level:'high'});
+  if(hr<5||hr>22) factors.push({icon:'🌙',text:`Unusual hour (${hr}:00)`,level:'high'});
+  if(dist>100) factors.push({icon:'📍',text:`Far from home (${dist}km)`,level:'med'});
+  if(tc>10)    factors.push({icon:'🔢',text:`High txn frequency (${tc}/day)`,level:'med'});
+  if(mr>0.6)   factors.push({icon:'⚠️',text:`Risky merchant (${(mr*100).toFixed(0)}%)`,level:'high'});
+  if(vs>0.6)   factors.push({icon:'⚡',text:`High velocity (${(vs*100).toFixed(0)}%)`,level:'high'});
+
+  const ebox=document.getElementById('explain-box');
+  ebox.style.display='block';
+  document.getElementById('risk-factors').innerHTML = factors.length
+    ? factors.map(f=>`<div style="display:flex;align-items:center;gap:.5rem;padding:.45rem 0;border-bottom:1px solid var(--border);font-size:.82rem;">${f.icon} <span>${f.text}</span> <span class="badge ${f.level==='high'?'badge-danger':'badge-warn'}" style="margin-left:auto">${f.level.toUpperCase()}</span></div>`).join('')
+    : '<div style="color:var(--text2);font-size:.82rem;">✅ No significant risk factors detected.</div>';
+}
+
+// ── Presets ──────────────────────────────────────────────────────────────────
+function fillRandom(){
+  document.getElementById('p-amount').value   = (Math.random()*500).toFixed(2);
+  document.getElementById('p-hour').value     = Math.floor(Math.random()*24);
+  document.getElementById('p-distance').value = (Math.random()*200).toFixed(1);
+  document.getElementById('p-txncount').value = Math.floor(Math.random()*20)+1;
+  const mr=(Math.random()).toFixed(2); document.getElementById('p-merchant').value=mr; document.getElementById('mr-val').textContent=mr;
+  const vs=(Math.random()).toFixed(2); document.getElementById('p-velocity').value=vs; document.getElementById('vs-val').textContent=vs;
+}
+function fillFraud(){
+  document.getElementById('p-amount').value   = (800+Math.random()*1000).toFixed(2);
+  document.getElementById('p-hour').value     = Math.floor(Math.random()*4);
+  document.getElementById('p-distance').value = (500+Math.random()*500).toFixed(1);
+  document.getElementById('p-txncount').value = 18;
+  document.getElementById('p-merchant').value = '0.92'; document.getElementById('mr-val').textContent='0.92';
+  document.getElementById('p-velocity').value = '0.95'; document.getElementById('vs-val').textContent='0.95';
+}
+function fillPreset(p){
+  if(p==='coffee'){
+    document.getElementById('p-amount').value=5.50; document.getElementById('p-hour').value=8;
+    document.getElementById('p-distance').value=2; document.getElementById('p-txncount').value=2;
+    document.getElementById('p-merchant').value='0.05'; document.getElementById('mr-val').textContent='0.05';
+    document.getElementById('p-velocity').value='0.05'; document.getElementById('vs-val').textContent='0.05';
+  }else if(p==='online'){
+    document.getElementById('p-amount').value=120; document.getElementById('p-hour').value=15;
+    document.getElementById('p-distance').value=0; document.getElementById('p-txncount').value=4;
+    document.getElementById('p-merchant').value='0.15'; document.getElementById('mr-val').textContent='0.15';
+    document.getElementById('p-velocity').value='0.12'; document.getElementById('vs-val').textContent='0.12';
+  }else{ fillFraud(); }
+  predict();
+}
+
+// ── Batch ────────────────────────────────────────────────────────────────────
+function loadSample(){
+  const sample=[
+    {amount:45.0,  hour:14,distance:5,  transaction_count:2, merchant_risk:0.08,velocity_score:0.07},
+    {amount:1200.0,hour:2, distance:800,transaction_count:15,merchant_risk:0.92,velocity_score:0.95},
+    {amount:22.5,  hour:9, distance:3,  transaction_count:1, merchant_risk:0.05,velocity_score:0.04},
+    {amount:750.0, hour:23,distance:400,transaction_count:12,merchant_risk:0.85,velocity_score:0.88},
+    {amount:8.99,  hour:12,distance:1,  transaction_count:3, merchant_risk:0.06,velocity_score:0.05},
+    {amount:350.0, hour:18,distance:30, transaction_count:5, merchant_risk:0.30,velocity_score:0.25},
+  ];
+  document.getElementById('batch-input').value=JSON.stringify(sample,null,2);
+}
+
+async function runBatch(){
+  const raw=document.getElementById('batch-input').value;
+  let txns;
+  try{ txns=JSON.parse(raw); }catch{ toast('❌ Invalid JSON'); return; }
+  try{
+    const res=await fetch(`${API}/api/batch`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({transactions:txns})
+    });
+    const d=await res.json();
+    if(d.error){toast('⚠️ '+d.error);return;}
+    showBatch(d);
+    toast(`✅ ${d.total} transactions analyzed`);
+  }catch{ toast('❌ Backend not running'); }
+}
+
+function showBatch(d){
+  const box=document.getElementById('batch-results');
+  box.style.display='block';
+  document.getElementById('batch-summary').innerHTML=`
+    <div class="metric-card" style="flex:1"><div class="metric-label">Total</div><div class="metric-value" style="font-size:1.6rem;">${d.total}</div></div>
+    <div class="metric-card" style="flex:1"><div class="metric-label">Fraud Detected</div><div class="metric-value" style="font-size:1.6rem;color:var(--danger);">${d.fraud_detected}</div></div>
+    <div class="metric-card" style="flex:1"><div class="metric-label">Legitimate</div><div class="metric-value" style="font-size:1.6rem;color:var(--safe);">${d.total-d.fraud_detected}</div></div>
+    <div class="metric-card" style="flex:1"><div class="metric-label">Fraud Rate</div><div class="metric-value" style="font-size:1.6rem;color:var(--warn);">${((d.fraud_detected/d.total)*100).toFixed(1)}%</div></div>`;
+
+  document.getElementById('batch-body').innerHTML=d.results.map(r=>`
+    <tr>
+      <td><span style="font-family:'JetBrains Mono',monospace;">#${r.id}</span></td>
+      <td><span style="font-family:'JetBrains Mono',monospace;">$${parseFloat(r.amount).toFixed(2)}</span></td>
+      <td><span class="tag ${r.is_fraud?'tag-fraud':'tag-legit'}">${r.prediction}</span></td>
+      <td><span style="font-family:'JetBrains Mono',monospace;color:${r.risk_score>=70?'var(--danger)':r.risk_score>=40?'var(--warn)':'var(--safe)'};">${r.risk_score}%</span></td>
+      <td style="min-width:120px;"><div class="progress-wrap"><div class="progress-bar ${r.risk_score>=70?'danger':r.risk_score<40?'safe':''}" style="width:${r.risk_score}%"></div></div></td>
+    </tr>`).join('');
+}
+
+// ── Metrics ──────────────────────────────────────────────────────────────────
+async function loadMetrics(){
+  try{
+    const res=await fetch(`${API}/api/metrics`);
+    if(!res.ok){toast('⚠️ Train a model first (Step 1)');return;}
+    const m=await res.json();
+    document.getElementById('m-acc').textContent  = m.accuracy+'%';
+    document.getElementById('m-prec').textContent = m.precision+'%';
+    document.getElementById('m-rec').textContent  = m.recall+'%';
+    document.getElementById('m-f1').textContent   = m.f1+'%';
+    document.getElementById('m-auc').textContent  = m.roc_auc+'%';
+    setTimeout(()=>document.getElementById('auc-bar').style.width=m.roc_auc+'%',100);
+
+    if(m.confusion_matrix){
+      const cm=m.confusion_matrix;
+      document.getElementById('cm-tp').textContent=cm[1][1];
+      document.getElementById('cm-fp').textContent=cm[0][1];
+      document.getElementById('cm-fn').textContent=cm[1][0];
+      document.getElementById('cm-tn').textContent=cm[0][0];
+    }
+
+    const bars=[
+      {label:'Accuracy',  val:m.accuracy,  color:'var(--accent)'},
+      {label:'Precision', val:m.precision, color:'var(--safe)'},
+      {label:'Recall',    val:m.recall,    color:'var(--warn)'},
+      {label:'F1',        val:m.f1,        color:'#a78bfa'},
+      {label:'ROC AUC',   val:m.roc_auc,   color:'var(--accent)'},
+    ];
+    document.getElementById('metric-bars').innerHTML=bars.map(b=>`
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:.85rem;">
+        <span style="width:80px;font-size:.8rem;color:var(--text2);font-weight:600;flex-shrink:0;">${b.label}</span>
+        <div class="progress-wrap" style="flex:1;height:10px;"><div class="progress-bar" style="width:${b.val}%;background:${b.color};"></div></div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:.82rem;color:${b.color};width:48px;text-align:right;">${b.val}%</span>
+      </div>`).join('');
+  }catch{toast('❌ Backend not running');}
+}
+
+
+// ── History ─────────────────────────────────────────────────────────────────
+async function loadHistory(){
+  try{
+    const res=await fetch(`${API}/api/history`);
+    const d=await res.json();
+    if(d.error){toast('⚠️ '+d.error);return;}
+    const rows=d.history;
+    const fraud=rows.filter(r=>r.is_fraud).length;
+    document.getElementById('history-summary').innerHTML=`
+      <div class="metric-card" style="flex:1"><div class="metric-label">Total Records</div><div class="metric-value" style="font-size:1.4rem;">${rows.length}</div></div>
+      <div class="metric-card" style="flex:1"><div class="metric-label">Fraud Detected</div><div class="metric-value" style="font-size:1.4rem;color:var(--danger);">${fraud}</div></div>
+      <div class="metric-card" style="flex:1"><div class="metric-label">Legitimate</div><div class="metric-value" style="font-size:1.4rem;color:var(--safe);">${rows.length-fraud}</div></div>`;
+    document.getElementById('history-body').innerHTML = rows.length===0
+      ? '<tr><td colspan="7" style="text-align:center;color:var(--text2);padding:2rem;">No predictions yet. Go to Predict tab!</td></tr>'
+      : rows.map(r=>`
+        <tr>
+          <td style="font-family:'JetBrains Mono',monospace;color:var(--text2);">${r.id}</td>
+          <td style="font-size:.78rem;color:var(--text2);">${r.timestamp}</td>
+          <td style="font-family:'JetBrains Mono',monospace;">$${parseFloat(r.amount||0).toFixed(2)}</td>
+          <td style="font-family:'JetBrains Mono',monospace;">${r.hour}:00</td>
+          <td><span class="tag ${r.is_fraud?'tag-fraud':'tag-legit'}">${r.prediction}</span></td>
+          <td style="font-family:'JetBrains Mono',monospace;color:${r.fraud_prob>=70?'var(--danger)':r.fraud_prob>=40?'var(--warn)':'var(--safe)'};">${r.fraud_prob}%</td>
+          <td><span class="badge ${r.risk_level==='HIGH'?'badge-danger':r.risk_level==='MEDIUM'?'badge-warn':'badge-safe'}">${r.risk_level}</span></td>
+        </tr>`).join('');
+  }catch{toast('❌ Backend not running');}
+}
+
+async function clearHistory(){
+  if(!confirm('Clear all prediction history from local DB?')) return;
+  try{
+    await fetch(`${API}/api/history/clear`,{method:'DELETE'});
+    toast('🗑️ History cleared from local DB');
+    loadHistory();
+  }catch{toast('❌ Backend not running');}
+}
+
+// ── Storage ──────────────────────────────────────────────────────────────────
+async function loadStorage(){
+  try{
+    const [storRes, runsRes] = await Promise.all([
+      fetch(`${API}/api/storage`),
+      fetch(`${API}/api/training-runs`)
+    ]);
+    const stor = await storRes.json();
+    const runs = await runsRes.json();
+
+    document.getElementById('storage-dir').textContent = stor.storage_dir || 'backend/storage/';
+
+    const icons={'fraud_model.pkl':'🧠','scaler.pkl':'📐','metrics.json':'📊','fraud.db':'🗄️','dataset.csv':'📄'};
+    document.getElementById('storage-files').innerHTML = Object.entries(stor.files||{}).map(([name,size])=>`
+      <div class="metric-card">
+        <div style="font-size:1.5rem;margin-bottom:.5rem;">${icons[name]||'📁'}</div>
+        <div class="metric-label">${name}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--accent);margin-top:.35rem;">${size}</div>
+      </div>`).join('');
+
+    const runRows = (runs.runs||[]);
+    document.getElementById('runs-body').innerHTML = runRows.length===0
+      ? '<tr><td colspan="8" style="text-align:center;color:var(--text2);padding:2rem;">No training runs yet</td></tr>'
+      : runRows.map(r=>`
+        <tr>
+          <td style="font-family:'JetBrains Mono',monospace;color:var(--text2);">${r.id}</td>
+          <td style="font-size:.78rem;color:var(--text2);">${r.timestamp}</td>
+          <td><span class="badge badge-accent">${r.algorithm}</span></td>
+          <td style="color:var(--accent);font-family:'JetBrains Mono',monospace;">${r.accuracy}%</td>
+          <td style="font-family:'JetBrains Mono',monospace;">${r.precision}%</td>
+          <td style="font-family:'JetBrains Mono',monospace;">${r.recall}%</td>
+          <td style="font-family:'JetBrains Mono',monospace;">${r.f1}%</td>
+          <td style="color:var(--safe);font-family:'JetBrains Mono',monospace;">${r.roc_auc}%</td>
+        </tr>`).join('');
+  }catch{toast('❌ Backend not running');}
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+checkApi();
+</script>
+</body>
+</html>
